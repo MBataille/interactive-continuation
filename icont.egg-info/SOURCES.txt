@@ -1,0 +1,17 @@
+README.md
+setup.py
+icont.egg-info/PKG-INFO
+icont.egg-info/SOURCES.txt
+icont.egg-info/dependency_links.txt
+icont.egg-info/top_level.txt
+src/__init__.py
+src/main.py
+src/equations/__init__.py
+src/equations/continuation.py
+src/equations/equation.py
+src/equations/llediff.py
+src/equations/utils.py
+src/interfaces/__init__.py
+src/interfaces/mainwindow.py
+src/interfaces/mainwindow_ui.py
+src/interfaces/mplwidget.py
