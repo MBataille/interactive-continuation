@@ -45,7 +45,7 @@ def get_ik(n_x: int, dx: float):
     return 2j * np.pi / dx * np.fft.fftfreq(n_x)
 
 
-def spectral_derivative(u_ft: np.ndarray, dx: np.float, order=1):
+def spectral_derivative(u_ft: np.ndarray, dx: float, order=1):
     ik = get_ik(u_ft.shape[0], dx) ** order
     return np.fft.ifft(ik * u_ft).real
 

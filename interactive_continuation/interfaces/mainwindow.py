@@ -5,7 +5,7 @@ import logging
 import numpy.typing as npt
 
 from .mainwindow_ui import Ui_MainWindow
-from src.equations.continuation import Continuation, EQUATIONS, DATAFOLDER
+from interactive_continuation.equations.continuation import Continuation, EQUATIONS, DATAFOLDER
 
 logger = logging.getLogger(__name__)
 c_handler = logging.StreamHandler()
