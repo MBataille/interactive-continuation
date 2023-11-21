@@ -11,11 +11,11 @@ class LugiatoLeveferDiffusion(Equation):
     def __init__(self, n_x=None):
         init_params = {
             'beta2': -1,
-            'Delta': 6.25,
+            'Delta': 5.0,
             'S': 3.0,
             'n_x': 512,
             'dx': 0.05,
-            'epsilon': 0.02
+            'epsilon': 0.1
         }
         if n_x is None:
             n_x = init_params['n_x']
