@@ -100,10 +100,12 @@ class Equation:
 
         # TODO change to C-N
         # dF = T * self.F(x, eta) - derivative(x, self.dt)
-        dF = self.F(x, eta)         
-        s = riemann_sum((x - x0) * xdot0, dx) * w_x \
-            + (1 - w_x) * (eta - eta0) * etadot0 - self.ds
+        dF = self.F(x, eta) 
 
+        # removed w_x and dx
+        # s = riemann_sum((x - x0) * xdot0, dx) * w_x \
+        #     + (1 - w_x) * (eta - eta0) * etadot0 - self.ds
+        s = np.dot(x-x0, xdot0) + (eta - eta0) * etadot0 - self.ds
         return self.pack(dF, s)
     
     def jacobian_palc(self, Y, for_tangent=False):
@@ -120,10 +122,12 @@ class Equation:
             return jac, last_col.ravel()
 
         # Deriv of arclength eq
-        last_row = np.append(
-                self.tau0[:self._N] * dx * self.w_x, 
-                self.tau0[self._N:] * (1 - self.w_x)
-            ).reshape(1, len(Y))
+        # removed dx and w_x
+        # last_row = np.append(
+        #         self.tau0[:self._N] * dx * self.w_x, 
+        #         self.tau0[self._N:] * (1 - self.w_x)
+        #     ).reshape(1, len(Y))
+        last_row = self.tau0
 
         if self.sparse:
             jac = sp.hstack([jac, last_col], format='csc')

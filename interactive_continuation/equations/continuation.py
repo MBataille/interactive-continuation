@@ -88,10 +88,10 @@ class Continuation:
                                          eta=self.Y0[-1])
 
     def palc_step(self):
-        with threadpool_limits(limits=4):
-            Y, msg = newton(self.eqn.rhs_palc, self.eqn.jacobian_palc,
-                            self.Y0 + self.eqn.tau0 * self.ds, verbose=True,
-                            solver=self.eqn.solver, **self.newton_kwargs)
+        # with threadpool_limits(limits=4):
+        Y, msg = newton(self.eqn.rhs_palc, self.eqn.jacobian_palc,
+                        self.Y0 + self.eqn.tau0 * self.ds, verbose=True,
+                        solver=self.eqn.solver, **self.newton_kwargs)
 
         if Y is None:
             return Y, msg

@@ -1,5 +1,5 @@
 from PySide6 import QtWidgets
-from PySide6.QtCore import QObject, QThread, Signal, QRunnable, QThreadPool
+from PySide6.QtCore import QObject, QThread, Signal, QRunnable, QThreadPool, QTimer
 
 import logging
 import numpy.typing as npt
@@ -13,6 +13,7 @@ logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
 c_handler.setFormatter(formatter)
 logger.addHandler(c_handler)
+FPS = 30
 
 class WorkerSignals(QObject):
     finished = Signal()
@@ -53,6 +54,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # connect signals
         self.playpause_pushButton.clicked.connect(self.play)
         self.initcond_pushButton.clicked.connect(self.load_init_cond)
+        self.update_plots_timer = QTimer()
+        self.update_plots_timer.setInterval(1_000 / FPS)
+        self.update_plots_timer.timeout.connect(self.update_plot)
 
     def init_eqns_combobox(self):
         self.eqn_combobox.clear()
@@ -84,7 +88,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         initial_condition_name = self.initcond_entry.text()
         initial_condition_path = DATAFOLDER / initial_condition_name
 
-        logger.debug(f'Loading initial condition: {initial_condition_name}')
+        logger.debug(f'Loading initial condition from {initial_condition_path}')
         
         if initial_condition_path.exists():
             self.continuation.load_initial_condition(initial_condition_path)
@@ -165,6 +169,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def stop_continuating(self):
         self.is_continuating = False
+        self.update_plots_timer.stop()
 
     def play(self):
         if self.continuation is None:
@@ -189,17 +194,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.is_continuating = True
         self.continuation_loop()
 
-    def update_plot(self, Y, msg):
+    def store_results(self, Y, msg):
+        self.continuation_msg = msg
+
+    def update_plot(self):
         self.update_profile_plot()
         self.update_main_plot()
-        self.set_continuation_log(msg)
+        self.set_continuation_log(self.continuation_msg)
 
     def continuation_loop(self):
         self.threadpool = QThreadPool()
 
+        self.continuation_msg = ''
+        
         self.runner = ContinuationWorker(self.continuation)
-        self.runner.signals.result.connect(self.update_plot)
+        self.runner.signals.result.connect(self.store_results)
         self.runner.signals.finished.connect(self.stop_continuating)
+        self.update_plots_timer.start()
         # self.runner.signals.error.connect(self.stop_continuating)
 
         self.threadpool.start(self.runner)
