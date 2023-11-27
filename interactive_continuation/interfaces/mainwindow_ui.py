@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'mainwindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.2.2
+## Created by: Qt User Interface Compiler version 6.6.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -168,6 +168,17 @@ class Ui_MainWindow(object):
 
         self.branchHLayout.addWidget(self.yaxis_combobox)
 
+        self.saveprofile_checkbox = QCheckBox(self.contparamsframe)
+        self.saveprofile_checkbox.setObjectName(u"saveprofile_checkbox")
+        self.saveprofile_checkbox.setChecked(True)
+
+        self.branchHLayout.addWidget(self.saveprofile_checkbox)
+
+        self.save_branch_pushButton = QPushButton(self.contparamsframe)
+        self.save_branch_pushButton.setObjectName(u"save_branch_pushButton")
+
+        self.branchHLayout.addWidget(self.save_branch_pushButton)
+
 
         self.leftverticalLayout.addLayout(self.branchHLayout)
 
@@ -193,12 +204,6 @@ class Ui_MainWindow(object):
 
         self.contsettingsHLayout = QHBoxLayout()
         self.contsettingsHLayout.setObjectName(u"contsettingsHLayout")
-        self.saveprofile_checkbox = QCheckBox(self.contparamsframe)
-        self.saveprofile_checkbox.setObjectName(u"saveprofile_checkbox")
-        self.saveprofile_checkbox.setChecked(True)
-
-        self.contsettingsHLayout.addWidget(self.saveprofile_checkbox)
-
         self.playpause_pushButton = QPushButton(self.contparamsframe)
         self.playpause_pushButton.setObjectName(u"playpause_pushButton")
 
@@ -343,7 +348,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1200, 20))
+        self.menubar.setGeometry(QRect(0, 0, 1200, 21))
         self.menuFile = QMenu(self.menubar)
         self.menuFile.setObjectName(u"menuFile")
         self.menuSettings = QMenu(self.menubar)
@@ -395,8 +400,9 @@ class Ui_MainWindow(object):
 
         self.xaxis_label.setText(QCoreApplication.translate("MainWindow", u"x axis", None))
         self.yaxis_label.setText(QCoreApplication.translate("MainWindow", u"y axis", None))
-        self.branch_label.setText(QCoreApplication.translate("MainWindow", u"Branch name", None))
         self.saveprofile_checkbox.setText(QCoreApplication.translate("MainWindow", u"save profile", None))
+        self.save_branch_pushButton.setText(QCoreApplication.translate("MainWindow", u"save branch data", None))
+        self.branch_label.setText(QCoreApplication.translate("MainWindow", u"Branch name", None))
         self.playpause_pushButton.setText(QCoreApplication.translate("MainWindow", u"play / pause", None))
         self.elapsedtime_label.setText(QCoreApplication.translate("MainWindow", u"Elapsed time: 0 s", None))
         self.avgtime_label.setText(QCoreApplication.translate("MainWindow", u"Avg time per point: 0s", None))

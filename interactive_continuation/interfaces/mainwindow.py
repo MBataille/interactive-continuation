@@ -47,6 +47,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.continuation = None
         self.is_continuating = False
 
+        self.continuation_msg = ''
+
         self.setupUi(self)
         self.init_eqns_combobox()
 
@@ -204,8 +206,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def continuation_loop(self):
         self.threadpool = QThreadPool()
-
-        self.continuation_msg = ''
         
         self.runner = ContinuationWorker(self.continuation)
         self.runner.signals.result.connect(self.store_results)

@@ -205,6 +205,23 @@
              <item>
               <widget class="QComboBox" name="yaxis_combobox"/>
              </item>
+             <item>
+              <widget class="QCheckBox" name="saveprofile_checkbox">
+               <property name="text">
+                <string>save profile</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="save_branch_pushButton">
+               <property name="text">
+                <string>save branch data</string>
+               </property>
+              </widget>
+             </item>
             </layout>
            </item>
           </layout>
@@ -227,16 +244,6 @@
            </item>
            <item>
             <layout class="QHBoxLayout" name="contsettingsHLayout">
-             <item>
-              <widget class="QCheckBox" name="saveprofile_checkbox">
-               <property name="text">
-                <string>save profile</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
              <item>
               <widget class="QPushButton" name="playpause_pushButton">
                <property name="text">
@@ -435,7 +442,7 @@
      <x>0</x>
      <y>0</y>
      <width>1200</width>
-     <height>20</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
