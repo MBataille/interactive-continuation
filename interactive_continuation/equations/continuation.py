@@ -73,7 +73,7 @@ class Continuation:
         self.Y0 = self.load_profile(filename)
         self.eqn.set_n_x_like(self.Y0)
         self.append_scalars(self.Y0)
-        self.save_profile(self.Y0)
+        # self.save_profile(self.Y0)
 
     def save_branch(self):
         df = pd.DataFrame(self.data)
