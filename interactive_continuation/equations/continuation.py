@@ -73,10 +73,11 @@ class Continuation:
         self.Y0 = self.load_profile(filename)
         self.eqn.set_n_x_like(self.Y0)
         self.append_scalars(self.Y0)
+        self.save_profile(self.Y0)
 
     def save_branch(self):
         df = pd.DataFrame(self.data)
-        pd.to_csv(self.branchfolder / 's.csv')
+        df.to_csv(self.branchfolder / 's.csv')
 
     def initialize_continuation(self, ds=0.1, direction='forward', w_x=0.5,
                                 **newton_kwargs):

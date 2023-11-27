@@ -59,6 +59,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.update_plots_timer = QTimer()
         self.update_plots_timer.setInterval(1_000 / FPS)
         self.update_plots_timer.timeout.connect(self.update_plot)
+        self.save_branch_pushButton.clicked.connect(self.save_branch)
 
     def init_eqns_combobox(self):
         self.eqn_combobox.clear()
@@ -198,6 +199,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def store_results(self, Y, msg):
         self.continuation_msg = msg
+        
+    def save_branch(self):
+        self.continuation.save_branch()
 
     def update_plot(self):
         self.update_profile_plot()
