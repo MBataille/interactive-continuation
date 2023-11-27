@@ -1,6 +1,7 @@
 import numpy as np
 from .equation import Equation
 import scipy.sparse as sp
+from scipy.optimize import fsolve
 
 from .utils import derivative_matrix, derivative
 
@@ -15,7 +16,7 @@ class LugiatoLeveferDiffusion(Equation):
             'S': 1.215,
             'n_x': 512,
             'dx': 0.05,
-            'epsilon': 0.0
+            'epsilon': 0.01
         }
         if n_x is None:
             n_x = init_params['n_x']
@@ -23,7 +24,7 @@ class LugiatoLeveferDiffusion(Equation):
         super().__init__('LLE_diffusion', init_params, n_x,
                          field_names=['Re E', 'Im E'], sparse=True)
         
-        self.extract = {'L2': self.get_L2}
+        self.extract = {'L2': self.get_L2, 'L2-HSS': self.get_L2_minus_homogeneous}
         self.set_n_x(n_x)
 
 
@@ -83,3 +84,34 @@ class LugiatoLeveferDiffusion(Equation):
         l2 = np.sum(mod2, axis=0) / self.n_x
 
         return l2.mean()
+    
+    def get_homogeneous(self, S, A0):
+        delta = self.get_param('Delta')
+        
+        def rhs_hss(X):
+            u, v = X
+            mod2 = u ** 2 + v ** 2
+            return np.array([
+                S - u + delta * v - v * mod2,
+                u * mod2 - (v + delta * u)
+            ])
+            
+        def jac_hss(X):
+            u, v = X
+            return np.array([
+                [-1 - 2 * u * v, delta - 3 * v ** 2 - u ** 2],
+                [-delta + 3 * u ** 2 + v ** 2, 2 * u * v - 1]
+            ])
+        
+        X0 = np.array([A0.real, A0.imag])
+        A_h = fsolve(rhs_hss, X0, fprime=jac_hss)
+        
+        return A_h[0] + 1j * A_h[1]
+    
+    def get_L2_minus_homogeneous(self, Y):
+        x, eta = self.unpack(Y)
+        A = x[:self.n_x] + 1j * x[self.n_x:]
+        A_h = self.get_homogeneous(eta, A.mean())      
+        mod2 = np.abs(A - A_h) ** 2  
+
+        return np.sum(mod2, axis=0) / self.n_x
