@@ -173,6 +173,9 @@ class Equation:
                 prev_tau[-1] = -1
 
         self.tau0 = self.get_tangent(Y0, prev_tau)
+        
+    def save_profile(self, Y, filename):
+        np.save(filename, self.unpack(Y)[0])
 
 
 equation = TypeVar('equation', bound=Equation)

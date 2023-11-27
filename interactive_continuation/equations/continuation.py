@@ -33,6 +33,8 @@ class Continuation:
 
         self.initialize_extract(self.eqn.extract)
         self.data = {scalar: [] for scalar in self.extract}
+        
+        self.continuation_count = 0
 
     def set_branchname(self, branchname):
         self.branchname = branchname
@@ -58,8 +60,11 @@ class Continuation:
         for scalar in self.extract:
             self.data[scalar].append(self.extract[scalar](Y))
 
-    def save_profile(self, Y, filename):
-        pass
+    def save_profile(self, Y, filename=None):
+        if filename is None:
+            filename = f'x{self.continuation_count}.npy'
+        
+        self.eqn.save_profile(Y, self.branchfolder / filename)
 
     def load_profile(self, filename):
         return np.load(filename)
@@ -70,7 +75,8 @@ class Continuation:
         self.append_scalars(self.Y0)
 
     def save_branch(self):
-        pass
+        df = pd.DataFrame(self.data)
+        pd.to_csv(self.branchfolder / 's.csv')
 
     def initialize_continuation(self, ds=0.1, direction='forward', w_x=0.5,
                                 **newton_kwargs):
@@ -96,9 +102,11 @@ class Continuation:
         if Y is None:
             return Y, msg
 
+        self.continuation_count += 1
+
         self.Y0 = Y
         self.append_scalars(Y)
-        # self.save_profile(Y)
+        self.save_profile(Y)
         self.eqn.initialize_continuation(Y, self.ds, self.w_x,
                                          prev_tau=self.eqn.tau0)
         return Y, msg
