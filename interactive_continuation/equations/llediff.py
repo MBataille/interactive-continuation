@@ -16,17 +16,33 @@ class LugiatoLeveferDiffusion(Equation):
             'S': 1.215,
             'n_x': 512,
             'dx': 0.05,
-            'epsilon': 0.01
+            'epsilon': 0.1,
+            'alpha1': 0.1
         }
         if n_x is None:
             n_x = init_params['n_x']
 
         super().__init__('LLE_diffusion', init_params, n_x,
-                         field_names=['Re E', 'Im E'], sparse=True)
+                         field_names=['Re E', 'Im E'], sparse=True,
+                         moving=True)
         
         self.extract = {'L2': self.get_L2, 'L2-HSS': self.get_L2_minus_homogeneous}
         self.set_n_x(n_x)
 
+    def first_derivative(self, X):
+        u, v = X[:self.n_x].ravel(), X[self.n_x:].ravel()
+
+        dx = self.get_param('dx')
+
+        Du = derivative(u, dx, axis=0, order=1, acc=8)
+        Dv = derivative(v, dx, axis=0, order=1, acc=8)
+
+        return np.append(Du, Dv)
+    
+    def first_derivative_matrix(self):
+        dx = self.get_param('dx')
+        D = derivative_matrix(self.n_x, dx, order=1, acc=8, sparse=True)
+        return sp.kron(np.eye(2), D, format='csc')
 
     def F(self, X, eta, flatten=True):
         u, v = X[:self.n_x].ravel(), X[self.n_x:].ravel()
@@ -34,15 +50,18 @@ class LugiatoLeveferDiffusion(Equation):
         dF = np.zeros_like(X)
         squared = (u * u + v * v)
 
-        dx, delta, beta2, epsilon = self.get_params('dx Delta beta2 epsilon')
+        dx, delta, beta2, epsilon, alpha1 = self.get_params('dx Delta beta2 epsilon alpha1')
+
+        Du = derivative(u, dx, axis=0, order=1, acc=8)
+        Dv = derivative(v, dx, axis=0, order=1, acc=8)
 
         D2u = derivative(u, dx, axis=0, order=2, acc=8)
         D2v = derivative(v, dx, axis=0, order=2, acc=8)
 
         dF[:self.n_x] = eta - u + delta * v - v * squared \
-            + beta2 * D2v + epsilon * D2u
+            + beta2 * D2v + epsilon * D2u + alpha1 * Dv
         dF[self.n_x:] = -delta * u - v + u * squared \
-            - beta2 * D2u + epsilon * D2v
+            - beta2 * D2u + epsilon * D2v - alpha1 * Du
         
         return dF
 
@@ -59,7 +78,8 @@ class LugiatoLeveferDiffusion(Equation):
 
         jac_homo = sp.diags([principal_diag, lower_diag, upper_diag],
                             offsets=[0, -self.n_x, self.n_x], format='csc')
-        return jac_homo + self.Dxx
+        
+        return jac_homo + self.Dxx + self.D
 
     def F_eta(self, X, eta):
         dF = np.zeros_like(X)
@@ -68,11 +88,16 @@ class LugiatoLeveferDiffusion(Equation):
 
     def set_n_x(self, n_x):
         super().set_n_x(n_x)
-        dx, beta2, epsilon = self.get_params('dx beta2 epsilon')
-        D = derivative_matrix(self.n_x, dx, order=2, acc=8, sparse=True)
+        dx, beta2, epsilon, alpha1 = self.get_params('dx beta2 epsilon alpha1')
+        D2 = derivative_matrix(self.n_x, dx, order=2, acc=8, sparse=True)
         self.Dxx = sp.kron(np.array([[epsilon, beta2],
                                      [-beta2, epsilon]]),
-                           D, format='csc')
+                           D2, format='csc')
+        
+        D = derivative_matrix(self.n_x, dx, order=1, acc=8, sparse=True)
+        self.D = sp.kron(np.array([[0, alpha1],
+                                    [-alpha1, 0]]),
+                            D, format='csc')
 
     def to_plot(self, Y):
         x = self.unpack(Y)[0]
@@ -109,7 +134,8 @@ class LugiatoLeveferDiffusion(Equation):
         return A_h[0] + 1j * A_h[1]
     
     def get_L2_minus_homogeneous(self, Y):
-        x, eta = self.unpack(Y)
+        x = self.unpack(Y)[0]
+        eta = self.unpack(Y)[-1]
         A = x[:self.n_x] + 1j * x[self.n_x:]
         A_h = self.get_homogeneous(eta, A.mean())      
         mod2 = np.abs(A - A_h) ** 2  

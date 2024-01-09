@@ -91,12 +91,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         initial_condition_name = self.initcond_entry.text()
         initial_condition_path = DATAFOLDER / initial_condition_name
 
-        logger.debug(f'Loading initial condition from {initial_condition_path}')
         
         if initial_condition_path.exists():
+            logger.debug(f'Found initial condition from {initial_condition_path}')
             self.continuation.load_initial_condition(initial_condition_path)
             self.draw_profile_plot()
             self.draw_main_plot()
+        else:
+            logger.debug(f'Could not find initial condition from {initial_condition_path}')
 
     def get_selected_axis(self):
         xaxis = self.xaxis_combobox.currentText()
@@ -199,6 +201,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def store_results(self, Y, msg):
         self.continuation_msg = msg
+
+    def continuation_error(self, msg):
+        self.continuation_msg = msg
+        self.set_continuation_log(msg)
         
     def save_branch(self):
         self.continuation.save_branch()
@@ -215,7 +221,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.runner.signals.result.connect(self.store_results)
         self.runner.signals.finished.connect(self.stop_continuating)
         self.update_plots_timer.start()
-        # self.runner.signals.error.connect(self.stop_continuating)
+        self.runner.signals.error.connect(self.continuation_error)
 
         self.threadpool.start(self.runner)
         

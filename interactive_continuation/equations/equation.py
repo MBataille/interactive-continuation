@@ -5,12 +5,12 @@ from scipy.integrate import solve_ivp
 import scipy.sparse as sp
 from typing import TypeVar
 
-from .utils import riemann_sum
+from .utils import derivative
 
 
 class Equation:
     def __init__(self, name, init_params, n_x, field_names=['u'],
-                 sparse=True):
+                 sparse=True, moving=False):
         self.name = name
         self.init_params = init_params
         self.n_x = n_x
@@ -22,10 +22,17 @@ class Equation:
 
         self.extract = {}
         self.sparse = sparse
+
+        self.moving = moving
+
         if self.sparse:
             self.solver = spsolve
+            self.hstack = lambda x: sp.hstack(x, format='csc')
+            self.vstack = lambda x: sp.vstack(x, format='csc')
         else:
             self.solver = np.linalg.solve
+            self.hstack = np.hstack
+            self.vstack = sp.vstack
 
         self.w_x = 0.5
 
@@ -73,11 +80,16 @@ class Equation:
         self.n_x = n_x
         self._N = self.n_x * self.n_fields
 
+        if self.moving:
+            self._Dx = self.first_derivative_matrix()
+
     def set_n_x_like(self, Y):
         n_x = self.get_n_x_from_profile_len(len(Y))
         self.set_n_x(n_x)
 
     def get_n_x_from_profile_len(self, profile_len):
+        if self.moving:
+            return int(round((profile_len - 2) / self.n_fields))
         return int(round((profile_len - 1) / self.n_fields))
     
     def to_plot(self, Y):
@@ -91,29 +103,38 @@ class Equation:
         return self.parameters.keys()
 
     def rhs_palc(self, Y):
+        if self.moving:
+            return self.rhs_palc_moving(Y)
+        
         x, eta = self.unpack(Y)
         x0, eta0 = self.unpack(self.Y0)
         xdot0, etadot0 = self.unpack(self.tau0)
 
-        w_x = self.w_x
-        dx = self.get_param('dx')
+        dF = self.F(x, eta)
 
-        # TODO change to C-N
-        # dF = T * self.F(x, eta) - derivative(x, self.dt)
-        dF = self.F(x, eta) 
-
-        # removed w_x and dx
-        # s = riemann_sum((x - x0) * xdot0, dx) * w_x \
-        #     + (1 - w_x) * (eta - eta0) * etadot0 - self.ds
-        s = np.dot(x-x0, xdot0) + (eta - eta0) * etadot0 - self.ds
+        s = np.dot(Y - self.Y0, self.tau0) - self.ds
         return self.pack(dF, s)
     
+    def rhs_palc_moving(self, Y):
+        x, v, eta = self.unpack(Y)
+        x0, v0, eta0 = self.unpack(self.Y0)
+
+        dF = self.F(x, eta) + v * self.first_derivative(x)
+
+        p = np.dot(x, self.first_derivative(x0)) * self.get_param('dx')
+        s = np.dot(Y - self.Y0, self.tau0) - self.ds
+        return self.pack(dF, [p, s])
+    
+    def first_derivative(self, x):
+        raise NotImplementedError
+    
     def jacobian_palc(self, Y, for_tangent=False):
+        if self.moving:
+            return self.jacobian_palc_moving(Y, for_tangent=for_tangent)
+        
         x, eta = self.unpack(Y)
-        x0, eta0 = self.unpack(self.Y0)
 
         jac = self.J(x, eta)
-        dx = self.get_param('dx')
         
         # Deriv of F w/r to param
         last_col = self.F_eta(x, eta).reshape(self._N, 1)
@@ -121,12 +142,6 @@ class Equation:
         if for_tangent:
             return jac, last_col.ravel()
 
-        # Deriv of arclength eq
-        # removed dx and w_x
-        # last_row = np.append(
-        #         self.tau0[:self._N] * dx * self.w_x, 
-        #         self.tau0[self._N:] * (1 - self.w_x)
-        #     ).reshape(1, len(Y))
         last_row = self.tau0
 
         if self.sparse:
@@ -137,6 +152,32 @@ class Equation:
             jac = np.vstack([jac, last_row])
 
         return jac
+    
+    def jacobian_palc_moving(self, Y, for_tangent=False):
+        x, v, eta = self.unpack(Y)
+        x0, v0, eta0 = self.unpack(self.Y0)
+
+        jac = self.J(x, eta) + v * self._Dx
+        
+        # Deriv of F w/r to param
+        last_col = np.append(self.F_eta(x, eta), 0).reshape(self._N+1, 1)
+
+        # Deriv of F w/r to speed
+        prev_col = self.first_derivative(x).reshape(self._N, 1)
+        prev_row = np.append(self.first_derivative(x0), 0) * self.get_param('dx')
+
+        jac = self.hstack([jac, prev_col])
+        jac = self.vstack([jac, prev_row])
+
+        if for_tangent:
+            return jac, last_col.ravel()
+
+        last_row = self.tau0
+
+        jac = self.hstack([jac, last_col])
+        jac = self.vstack([jac, last_row])
+
+        return jac 
        
     def get_tangent(self, Y, prev_tau):
         reduced_jac, rhs = self.jacobian_palc(Y, for_tangent=True)
@@ -175,7 +216,7 @@ class Equation:
         self.tau0 = self.get_tangent(Y0, prev_tau)
         
     def save_profile(self, Y, filename):
-        np.save(filename, self.unpack(Y)[0])
+        np.save(filename, Y)
 
 
 equation = TypeVar('equation', bound=Equation)
