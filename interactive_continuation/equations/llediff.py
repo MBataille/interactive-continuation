@@ -26,6 +26,7 @@ class LugiatoLeveferDiffusion(Equation):
                          field_names=['Re E', 'Im E'], sparse=True,
                          moving=True)
         
+        self.param_cont = 'alpha1'
         self.extract = {'L2': self.get_L2, 'L2-HSS': self.get_L2_minus_homogeneous}
         self.set_n_x(n_x)
 
@@ -50,7 +51,16 @@ class LugiatoLeveferDiffusion(Equation):
         dF = np.zeros_like(X)
         squared = (u * u + v * v)
 
-        dx, delta, beta2, epsilon, alpha1 = self.get_params('dx Delta beta2 epsilon alpha1')
+        if self.param_cont == 'S':
+            S = eta
+            alpha1 = self.get_param('alpha1')
+        elif self.param_cont == 'alpha1':
+            S = self.get_param('S')
+            alpha1 = eta
+        else:
+            raise ValueError(f'Could not recognize {self.param_cont} as a continuation parameter.')
+
+        dx, delta, beta2, epsilon = self.get_params('dx Delta beta2 epsilon')
 
         Du = derivative(u, dx, axis=0, order=1, acc=8)
         Dv = derivative(v, dx, axis=0, order=1, acc=8)
@@ -58,7 +68,7 @@ class LugiatoLeveferDiffusion(Equation):
         D2u = derivative(u, dx, axis=0, order=2, acc=8)
         D2v = derivative(v, dx, axis=0, order=2, acc=8)
 
-        dF[:self.n_x] = eta - u + delta * v - v * squared \
+        dF[:self.n_x] = S - u + delta * v - v * squared \
             + beta2 * D2v + epsilon * D2u + alpha1 * Dv
         dF[self.n_x:] = -delta * u - v + u * squared \
             - beta2 * D2u + epsilon * D2v - alpha1 * Du
@@ -70,6 +80,15 @@ class LugiatoLeveferDiffusion(Equation):
 
         u, v = U.ravel(), V.ravel()
 
+        if self.param_cont == 'S':
+            S = eta
+            alpha1 = self.get_param('alpha1')
+        elif self.param_cont == 'alpha1':
+            S = self.get_param('S')
+            alpha1 = eta
+        else:
+            raise ValueError(f'Could not recognize {self.param_cont} as a continuation parameter.')
+
         delta = self.get_param('Delta')
 
         principal_diag = np.append(-2 * u * v - 1, 2 * u * v - 1)
@@ -79,11 +98,21 @@ class LugiatoLeveferDiffusion(Equation):
         jac_homo = sp.diags([principal_diag, lower_diag, upper_diag],
                             offsets=[0, -self.n_x, self.n_x], format='csc')
         
-        return jac_homo + self.Dxx + self.D
+        return jac_homo + self.Dxx + self.D * alpha1
 
     def F_eta(self, X, eta):
         dF = np.zeros_like(X)
-        dF[:self.n_x] = 1
+        dx = self.get_param('dx')
+
+        if self.param_cont == 'S':
+            dF[:self.n_x] = 1
+        elif self.param_cont == 'alpha1':
+            u, v = X[:self.n_x].ravel(), X[self.n_x:].ravel()
+            dF[:self.n_x] = derivative(v, dx, axis=0, order=1, acc=8)
+            dF[self.n_x:] = -derivative(u, dx, axis=0, order=1, acc=8)
+        else:
+            raise ValueError(f'Could not recognize {self.param_cont} as a continuation parameter.')
+
         return dF
 
     def set_n_x(self, n_x):
@@ -95,8 +124,8 @@ class LugiatoLeveferDiffusion(Equation):
                            D2, format='csc')
         
         D = derivative_matrix(self.n_x, dx, order=1, acc=8, sparse=True)
-        self.D = sp.kron(np.array([[0, alpha1],
-                                    [-alpha1, 0]]),
+        self.D = sp.kron(np.array([[0, 1.0],
+                                    [-1.0, 0]]),
                             D, format='csc')
 
     def to_plot(self, Y):
