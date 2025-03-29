@@ -94,7 +94,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
         if initial_condition_path.exists():
             logger.debug(f'Found initial condition from {initial_condition_path}')
-            self.continuation.load_initial_condition(initial_condition_path)
+            msg = self.continuation.load_initial_condition(initial_condition_path)
+            self.set_continuation_log(msg)
             self.draw_profile_plot()
             self.draw_main_plot()
         else:
@@ -125,7 +126,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         xs, ys = data
 
-        self.mainplot.update('main_curve', xs, ys, auto_lims=True)
+        self.mainplot.update('main_curve', xs, ys, auto_lims=False)
         self.mainplot.update('main_marker', [xs[-1]], [ys[-1]])
 
     def draw_profile_plot(self, data=None):

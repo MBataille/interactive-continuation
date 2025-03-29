@@ -16,8 +16,8 @@ class LugiatoLeveferDiffusion(Equation):
             'S': 1.215,
             'n_x': 512,
             'dx': 0.05,
-            'epsilon': 0.1,
-            'alpha1': 0.1
+            'epsilon': 0.0,
+            'alpha1': 0.0
         }
         if n_x is None:
             n_x = init_params['n_x']
@@ -26,7 +26,7 @@ class LugiatoLeveferDiffusion(Equation):
                          field_names=['Re E', 'Im E'], sparse=True,
                          moving=True)
         
-        self.param_cont = 'alpha1'
+        self.param_cont = 'S'
         self.extract = {'L2': self.get_L2, 'L2-HSS': self.get_L2_minus_homogeneous}
         self.set_n_x(n_x)
 
@@ -69,9 +69,9 @@ class LugiatoLeveferDiffusion(Equation):
         D2v = derivative(v, dx, axis=0, order=2, acc=8)
 
         dF[:self.n_x] = S - u + delta * v - v * squared \
-            + beta2 * D2v + epsilon * D2u + alpha1 * Dv
+            + beta2 * D2v # + epsilon * D2u + alpha1 * Dv
         dF[self.n_x:] = -delta * u - v + u * squared \
-            - beta2 * D2u + epsilon * D2v - alpha1 * Du
+            - beta2 * D2u # + epsilon * D2v - alpha1 * Du
         
         return dF
 
@@ -98,7 +98,7 @@ class LugiatoLeveferDiffusion(Equation):
         jac_homo = sp.diags([principal_diag, lower_diag, upper_diag],
                             offsets=[0, -self.n_x, self.n_x], format='csc')
         
-        return jac_homo + self.Dxx + self.D * alpha1
+        return jac_homo + self.Dxx # + self.D * alpha1
 
     def F_eta(self, X, eta):
         dF = np.zeros_like(X)
@@ -119,14 +119,17 @@ class LugiatoLeveferDiffusion(Equation):
         super().set_n_x(n_x)
         dx, beta2, epsilon, alpha1 = self.get_params('dx beta2 epsilon alpha1')
         D2 = derivative_matrix(self.n_x, dx, order=2, acc=8, sparse=True)
-        self.Dxx = sp.kron(np.array([[epsilon, beta2],
-                                     [-beta2, epsilon]]),
+        # self.Dxx = sp.kron(np.array([[epsilon, beta2],
+        #                              [-beta2, epsilon]]),
+        #                    D2, format='csc')
+        self.Dxx = sp.kron(np.array([[0, beta2],
+                                     [-beta2, 0]]),
                            D2, format='csc')
         
-        D = derivative_matrix(self.n_x, dx, order=1, acc=8, sparse=True)
-        self.D = sp.kron(np.array([[0, 1.0],
-                                    [-1.0, 0]]),
-                            D, format='csc')
+        # D = derivative_matrix(self.n_x, dx, order=1, acc=8, sparse=True)
+        # self.D = sp.kron(np.array([[0, 1.0],
+        #                             [-1.0, 0]]),
+        #                     D, format='csc')
 
     def to_plot(self, Y):
         x = self.unpack(Y)[0]

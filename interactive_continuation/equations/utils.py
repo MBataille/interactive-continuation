@@ -32,7 +32,7 @@ def forward_derivative_matrix(n_t, dt, sparse=False):
     return D
 
 
-def derivative(u: np.ndarray, dt: float, axis: int = 1, order=1, acc=2):
+def derivative(u: np.ndarray, dt: float, axis: int = 0, order=1, acc=2):
     coefs, offsets = get_finite_difference_coefficients(order, acc)
     du = np.zeros_like(u)
     for i, coef in enumerate(coefs):
@@ -84,12 +84,13 @@ def derivative_matrix(n_t, dt, order=1, acc=2, sparse=False, kind='center'):
 
 
 def newton(func, jac, X, max_iter=20, atol=1e-9, verbose=False, sparse=True,
-           callback=None, solver=None, damping=1.0, maxerr=1, max_step=1.0):
+           callback=None, solver=None, damping=1.0, maxerr=1, max_step=1.0,
+           args=()):
     xi = X.copy()
     if solver is None:
         solver = spsolve if sparse else np.linalg.solve
 
-    fxi = func(xi)
+    fxi = func(xi, *args)
     err = np.abs(fxi).sum() / len(fxi)
 
     # return value
@@ -99,12 +100,12 @@ def newton(func, jac, X, max_iter=20, atol=1e-9, verbose=False, sparse=True,
         msg = f'Step 0: |F| = {err:.4e}, eta = {xi[-1]:.5f}'
 
     for n_iter in range(max_iter):
-        delta = solver(jac(xi), fxi)
+        delta = solver(jac(xi, *args), fxi)
         if abs(delta[-1]) > max_step:
             xi -= delta * max_step / abs(delta[-1])
         else:
             xi -= delta * damping
-        fxi = func(xi)
+        fxi = func(xi, *args)
         err = np.abs(fxi).sum() / len(fxi)
 
         if verbose:

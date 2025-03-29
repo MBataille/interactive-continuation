@@ -7,11 +7,13 @@ from threadpoolctl import threadpool_limits
 from .equation import equation
 from .llediff import LugiatoLeveferDiffusion
 from .llediff_fft import LugiatoLeveferDiffusionFFT
+from .she import SwiftHohenberg
 from .utils import newton
 
 
 EQUATIONS = {'LLE-D': LugiatoLeveferDiffusion,
-             'LLE-D-FFT': LugiatoLeveferDiffusionFFT}
+             'LLE-D-FFT': LugiatoLeveferDiffusionFFT,
+             'SHE': SwiftHohenberg}
 
 DATAFOLDER = Path(os.getcwd())
 if DATAFOLDER.parts[-1] == 'src':
@@ -70,9 +72,11 @@ class Continuation:
         return np.load(filename)
 
     def load_initial_condition(self, filename):
-        self.Y0 = self.load_profile(filename)
-        self.eqn.set_n_x_like(self.Y0)
+        Y0 = self.load_profile(filename)
+        self.eqn.set_n_x_like(Y0)
+        self.Y0, msg = self.improve_initial_condition(Y0)
         self.append_scalars(self.Y0)
+        return msg
         # self.save_profile(self.Y0)
 
     def save_branch(self):
@@ -93,6 +97,26 @@ class Continuation:
         self.eqn.initialize_continuation(self.Y0, ds, w_x, 
                                          direction=direction[0],
                                          eta=self.Y0[-1])
+        
+    def improve_initial_condition(self, Y0):
+        if self.eqn.moving:
+            x, v, eta = self.eqn.unpack(Y0)
+        else:
+            x, eta = self.eqn.unpack(Y0)
+
+        x, msg = newton(self.eqn.F, self.eqn.J,
+                        x, verbose=True,
+                        solver=self.eqn.solver, args=(eta,))
+        
+        if x is None:
+            return Y0, msg
+
+        if self.eqn.moving:
+            better_Y0 = self.eqn.pack(x, v, eta)
+        else:
+            better_Y0 = self.eqn.pack(x, eta)
+        # self.save_profile(Y)
+        return better_Y0, msg
 
     def palc_step(self):
         # with threadpool_limits(limits=4):
@@ -107,7 +131,7 @@ class Continuation:
 
         self.Y0 = Y
         self.append_scalars(Y)
-        self.save_profile(Y)
+        # self.save_profile(Y)
         self.eqn.initialize_continuation(Y, self.ds, self.w_x,
                                          prev_tau=self.eqn.tau0)
         return Y, msg
